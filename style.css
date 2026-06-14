@@ -30,8 +30,15 @@ body {
 }
 
 h1 { font-size: 2.2rem; letter-spacing: 2px; }
-
 #status { font-size: 1.1rem; color: #aaa; }
+
+.scoreboard {
+  display: flex;
+  gap: 30px;
+  font-size: 1rem;
+  color: #aaa;
+}
+.scoreboard span { font-weight: bold; color: var(--text); }
 
 .board {
   display: grid;
@@ -50,15 +57,34 @@ h1 { font-size: 2.2rem; letter-spacing: 2px; }
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.1s;
   user-select: none;
 }
 
 .cell:hover:not(.taken) { background: #1e2d50; }
 .cell.taken { cursor: default; }
+
+.cell.pop {
+  animation: pop 0.15s ease-out;
+}
+@keyframes pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  80%  { transform: scale(1.1); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
 .cell.x { color: var(--x-color); }
 .cell.o { color: var(--o-text); }
-.cell.winner { background: #0f3460; border-color: #4fc3f7; }
+
+.cell.winner {
+  background: #0f3460;
+  border-color: #4fc3f7;
+  animation: pulse 0.6s ease-in-out infinite alternate;
+}
+@keyframes pulse {
+  from { box-shadow: 0 0 6px #4fc3f7; }
+  to   { box-shadow: 0 0 20px #4fc3f7; }
+}
 
 #restart {
   padding: 10px 30px;
