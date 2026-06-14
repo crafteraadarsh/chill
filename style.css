@@ -97,3 +97,12 @@ h1 { font-size: 2.2rem; letter-spacing: 2px; }
   transition: opacity 0.2s;
 }
 #restart:hover { opacity: 0.85; }
+
+.mode-select {
+  display: flex;
+  gap: 16px;
+  font-size: 0.95rem;
+  color: #aaa;
+}
+.mode-select label { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.mode-select input[type="radio"] { accent-color: var(--x-color); }
