@@ -9,6 +9,7 @@ const state = {
   currentPlayer: 'X',
   gameOver: false,
   scores: { X: 0, O: 0, D: 0 },
+  mode: '2p',
 };
 
 const cells = document.querySelectorAll('.cell');
@@ -17,25 +18,14 @@ const restartBtn = document.getElementById('restart');
 const scoreX = document.getElementById('score-x');
 const scoreO = document.getElementById('score-o');
 const scoreD = document.getElementById('score-d');
+const modeInputs = document.querySelectorAll('input[name="mode"]');
 
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const ctx = AudioCtx ? new AudioCtx() : null;
-
-function beep(freq, duration, type = 'sine') {
-  if (!ctx) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain); gain.connect(ctx.destination);
-  osc.frequency.value = freq;
-  osc.type = type;
-  gain.gain.setValueAtTime(0.15, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-  osc.start(); osc.stop(ctx.currentTime + duration);
-}
-
-function playClick()  { beep(440, 0.08); }
-function playWin()    { beep(523, 0.12); setTimeout(() => beep(659, 0.12), 120); setTimeout(() => beep(784, 0.2), 240); }
-function playDraw()   { beep(300, 0.25, 'sawtooth'); }
+modeInputs.forEach(input => {
+  input.addEventListener('change', e => {
+    state.mode = e.target.value;
+    restart();
+  });
+});
 
 function checkWinner(board) {
   for (const [a,b,c] of WIN_LINES) {
@@ -52,44 +42,60 @@ function updateScoreboard() {
   scoreD.textContent = state.scores.D;
 }
 
-function render() {
-  cells.forEach((cell, i) => {
-    cell.textContent = state.board[i] || '';
-    cell.className = 'cell';
-    if (state.board[i]) cell.classList.add('taken', state.board[i].toLowerCase());
-  });
+function applyMove(idx, player) {
+  state.board[idx] = player;
+  const cell = cells[idx];
+  cell.textContent = player;
+  cell.classList.add('taken', player.toLowerCase(), 'pop');
+}
+
+function endGame(result) {
+  state.gameOver = true;
+  if (result.draw) {
+    state.scores.D++;
+    statusEl.textContent = "It's a draw!";
+  } else {
+    state.scores[result.winner]++;
+    const label = state.mode !== '2p' && result.winner === 'O' ? 'AI' : 'Player ' + result.winner;
+    statusEl.innerHTML = '<strong>' + label + '</strong> wins!';
+    result.line.forEach(i => cells[i].classList.add('winner'));
+  }
+  updateScoreboard();
+}
+
+function aiTurn() {
+  if (state.gameOver) return;
+  const move = state.mode === 'hard'
+    ? AI.bestMove([...state.board])
+    : AI.randomMove([...state.board]);
+  if (move === undefined) return;
+
+  setTimeout(() => {
+    applyMove(move, 'O');
+    const result = checkWinner(state.board);
+    if (result) { endGame(result); return; }
+    state.currentPlayer = 'X';
+    statusEl.innerHTML = "Player <span>X</span>'s turn";
+  }, 400);
 }
 
 function handleClick(e) {
   const idx = parseInt(e.target.dataset.index);
   if (state.board[idx] || state.gameOver) return;
 
-  state.board[idx] = state.currentPlayer;
-  playClick();
-
-  const cell = cells[idx];
-  cell.textContent = state.currentPlayer;
-  cell.classList.add('taken', state.currentPlayer.toLowerCase(), 'pop');
+  applyMove(idx, state.currentPlayer);
 
   const result = checkWinner(state.board);
-  if (result) {
-    state.gameOver = true;
-    if (result.draw) {
-      state.scores.D++;
-      statusEl.textContent = "It's a draw!";
-      playDraw();
-    } else {
-      state.scores[result.winner]++;
-      statusEl.innerHTML = `Player <strong>${result.winner}</strong> wins!`;
-      result.line.forEach(i => cells[i].classList.add('winner'));
-      playWin();
-    }
-    updateScoreboard();
-    return;
-  }
+  if (result) { endGame(result); return; }
 
-  state.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
-  statusEl.innerHTML = `Player <span>${state.currentPlayer}</span>'s turn`;
+  if (state.mode !== '2p') {
+    state.currentPlayer = 'O';
+    statusEl.textContent = 'AI is thinking...';
+    aiTurn();
+  } else {
+    state.currentPlayer = state.currentPlayer === 'X' ? 'O' : 'X';
+    statusEl.innerHTML = 'Player <span>' + state.currentPlayer + "</span>'s turn";
+  }
 }
 
 function restart() {
@@ -97,9 +103,11 @@ function restart() {
   state.currentPlayer = 'X';
   state.gameOver = false;
   statusEl.innerHTML = "Player <span>X</span>'s turn";
-  render();
+  cells.forEach(cell => {
+    cell.textContent = '';
+    cell.className = 'cell';
+  });
 }
 
 cells.forEach(cell => cell.addEventListener('click', handleClick));
 restartBtn.addEventListener('click', restart);
-render();
